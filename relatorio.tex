@@ -1,0 +1,114 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{parskip}
+
+\title{\textbf{Relatório de Avaliação de Desempenho:\\Arquiteturas Cliente-Servidor e Peer-to-Peer (P2P)}}
+\author{
+    \textbf{Universidade Federal de Sergipe (UFS)}\\
+    \textbf{Disciplina:} Sistemas Distribuídos\\
+    \textbf{Atividade:} Atividade 01 - Unidade 2\\
+    \textbf{Autor:} Brenno Phelipe Silva dos Santos - 202400050750
+}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introdução e Metodologia}
+
+Este relatório apresenta a avaliação de desempenho na transferência de arquivos em rede, comparando abordagens centralizadas (Cliente-Servidor) e descentralizadas (Peer-to-Peer - P2P). O objetivo é analisar o comportamento do sistema sob carga concorrente, registrando os tempos mínimo, médio e máximo de conclusão para diferentes tamanhos de arquivo e arquiteturas.
+
+Os testes foram conduzidos simulando 10 nós clientes simultâneos realizando o download de arquivos gerados em memória com tamanhos de 5 MB, 50 MB e 500 MB. Para evitar gargalos de I/O de disco local que pudessem mascarar o desempenho da rede, os dados recebidos pelos clientes foram imediatamente descartados em memória.
+
+Foram testadas quatro variações arquiteturais:
+\begin{enumerate}
+    \item \textbf{Cliente-Servidor (Modo 1):} Atendimento sequencial estrito (1 cliente por vez).
+    \item \textbf{Cliente-Servidor (Modo 2):} Atendimento simultâneo irrestrito (1 thread por cliente).
+    \item \textbf{Cliente-Servidor (Modo 3):} Atendimento com concorrência limitada (Thread pool de 3 clientes).
+    \item \textbf{Peer-to-Peer (P2P):} Transferência baseada no protocolo BitTorrent utilizando o cliente de terminal \texttt{aria2c}.
+\end{enumerate}
+
+\section{Resultados Obtidos}
+
+Os testes foram consolidados com base em 10 execuções simultâneas por cenário.
+
+\begin{table}[h]
+    \centering
+    \caption{Desempenho com Arquivo de 5 MB}
+    \begin{tabular}{llrrr}
+        \toprule
+        \textbf{Arquitetura} & \textbf{Variação} & \textbf{Mínimo (ms)} & \textbf{Médio (ms)} & \textbf{Máximo (ms)} \\
+        \midrule
+        Cliente-Servidor & Modo 1: Sequencial & 29 & 42.70 & 56 \\
+        Cliente-Servidor & Modo 2: Multi-thread & 39 & 42.30 & 48 \\
+        Cliente-Servidor & Modo 3: Thread Pool (3) & 34 & \textbf{40.20} & 47 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Desempenho com Arquivo de 50 MB}
+    \begin{tabular}{llrrr}
+        \toprule
+        \textbf{Arquitetura} & \textbf{Variação} & \textbf{Mínimo (ms)} & \textbf{Médio (ms)} & \textbf{Máximo (ms)} \\
+        \midrule
+        Cliente-Servidor & Modo 1: Sequencial & 57 & 155.50 & 236 \\
+        Cliente-Servidor & Modo 2: Multi-thread & 104 & 147.80 & 171 \\
+        Cliente-Servidor & Modo 3: Thread Pool (3) & 74 & \textbf{138.30} & 191 \\
+        Peer-to-Peer (P2P) & BitTorrent & 1035 & 1053.70 & 1063 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Desempenho com Arquivo de 500 MB}
+    \begin{tabular}{llrrr}
+        \toprule
+        \textbf{Arquitetura} & \textbf{Variação} & \textbf{Mínimo (ms)} & \textbf{Médio (ms)} & \textbf{Máximo (ms)} \\
+        \midrule
+        Cliente-Servidor & Modo 1: Sequencial & 272 & 1376.00 & 2478 \\
+        Cliente-Servidor & Modo 2: Multi-thread & 832 & 1029.00 & 1252 \\
+        Cliente-Servidor & Modo 3: Thread Pool (3) & 402 & \textbf{852.70} & 1275 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Análise e Discussão de Desempenho}
+
+A análise cruzada das arquiteturas revela como a gestão de concorrência e a distribuição de banda afetam diretamente a experiência do utilizador e a carga sobre a infraestrutura.
+
+\subsection{Arquitetura Cliente-Servidor: Modo 1 (Sequencial)}
+\begin{itemize}
+    \item \textbf{Comportamento:} O servidor bloqueia a conexão e atende exclusivamente um cliente até o fim, formando uma fila de espera para os demais.
+    \item \textbf{Justificativa dos Tempos:} Apresentou invariavelmente o \textbf{menor Tempo Mínimo} (ex: 57 ms nos 50 MB e 272 ms nos 500 MB). Isso ocorre porque o primeiro cliente da fila detém 100\% dos recursos do servidor (I/O, CPU e banda de rede) sem qualquer contenção. No entanto, apresentou o \textbf{maior Tempo Máximo e a pior Média} global, pois o 10º cliente sofreu a penalidade de aguardar ocioso na fila o término das 9 transferências anteriores (alcançando 2478 ms na carga de 500 MB). É uma arquitetura altamente ineficiente para múltiplos nós.
+\end{itemize}
+
+\subsection{Arquitetura Cliente-Servidor: Modo 2 (Multi-thread Livre)}
+\begin{itemize}
+    \item \textbf{Comportamento:} O servidor aceita todas as conexões simultaneamente, instanciando uma nova Thread para cada cliente, dividindo imediatamente os recursos.
+    \item \textbf{Justificativa dos Tempos:} O \textbf{Tempo Mínimo eleva-se} (ex: salta para 832 ms nos 500 MB) porque o primeiro cliente já não tem recursos dedicados; a banda e o processador são fatiados por 10 desde o primeiro milissegundo. Contudo, o \textbf{Tempo Máximo cai drasticamente} em relação ao Modo 1 (de 2478 ms para 1252 ms), pois elimina-se a fila de inatividade. O problema desta abordagem é visível nos 500 MB: a criação descontrolada de threads gera \textit{overhead} de troca de contexto (\textit{Context Switching}) no Sistema Operativo do servidor, penalizando o tempo médio geral.
+\end{itemize}
+
+\subsection{Arquitetura Cliente-Servidor: Modo 3 (Thread Pool)}
+\begin{itemize}
+    \item \textbf{Comportamento:} O servidor utiliza uma fila controlada e limita a concorrência a um número saudável de threads ativas (neste teste, 3 simultâneas).
+    \item \textbf{Justificativa dos Tempos:} Entregou de forma consistente o \textbf{melhor Tempo Médio} em todas as volumetrias (40.20 ms, 138.30 ms e 852.70 ms). Esta arquitetura combina as vantagens dos modelos anteriores: ao limitar a contenção a 3 transferências simultâneas, evita a saturação de I/O e a sobrecarga de troca de contexto do Modo 2, enquanto acelera dramaticamente o esvaziamento da fila de espera em comparação ao Modo 1. Representa o ponto de equilíbrio de eficiência em arquiteturas centralizadas.
+\end{itemize}
+
+\subsection{Arquitetura Peer-to-Peer (BitTorrent)}
+\begin{itemize}
+    \item \textbf{Comportamento:} A transferência é descentralizada. O nó central (Seeder) envia fragmentos, e os clientes (Leechers) passam a transmitir os fragmentos recebidos uns aos outros.
+    \item \textbf{Justificativa dos Tempos:} Nos testes de 50 MB em ambiente local (onde a rede física é o mesmo host), o P2P apresentou um tempo absoluto superior (Mínimo de 1035 ms). Isso justifica-se pelo \textbf{elevado \textit{overhead} do protocolo}: o BitTorrent necessita realizar consultas ao \textit{tracker}, estabelecer ligações TCP (\textit{Handshakes}) multiplamente entre os nós, trocar \textit{bitmaps} de peças e processar hashes SHA-1 para garantir a integridade de cada fragmento. Para ficheiros pequenos numa rede local ultrarrápida, o custo matemático e de negociação de rede do protocolo demora mais do que a própria transferência \textit{raw} do TCP.
+    \item \textbf{Escalabilidade Comprovada:} O grande destaque do P2P não é a sua velocidade isolada, mas a sua \textbf{curva de tempo plana}. A diferença entre o primeiro cliente a terminar e o último foi de apenas 28 milissegundos (1035 ms vs 1063 ms). Ao contrário do modelo Cliente-Servidor, onde o tempo máximo degrada linearmente com a adição de clientes, o modelo P2P escala perfeitamente. Se o teste envolvesse 1.000 clientes, os servidores centralizados entrariam em colapso, enquanto no P2P, como cada novo cliente atua simultaneamente como servidor (\textit{uploading}), a carga é diluída, mantendo a coesão temporal independentemente da demanda.
+\end{itemize}
+
+\end{document}
