@@ -12,8 +12,8 @@
 \author{
     \textbf{Universidade Federal de Sergipe (UFS)}\\
     \textbf{Disciplina:} Sistemas Distribuídos\\
-    \textbf{Atividade:} Atividade 01 - Unidade 2\\
-    \textbf{Autor:} Brenno Phelipe Silva dos Santos - 202400050750
+    \textbf{Atividade:} Atividade 03 - Unidade 2\\
+    \textbf{Autor:} Brenno Phelipe Silva dos Santos -  202400050750
 }
 \date{}
 
@@ -49,6 +49,7 @@ Os testes foram consolidados com base em 10 execuções simultâneas por cenári
         Cliente-Servidor & Modo 1: Sequencial & 29 & 42.70 & 56 \\
         Cliente-Servidor & Modo 2: Multi-thread & 39 & 42.30 & 48 \\
         Cliente-Servidor & Modo 3: Thread Pool (3) & 34 & \textbf{40.20} & 47 \\
+        Peer-to-Peer (P2P) & BitTorrent & 1033 & 1041.30 & 1048 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -78,6 +79,7 @@ Os testes foram consolidados com base em 10 execuções simultâneas por cenári
         Cliente-Servidor & Modo 1: Sequencial & 272 & 1376.00 & 2478 \\
         Cliente-Servidor & Modo 2: Multi-thread & 832 & 1029.00 & 1252 \\
         Cliente-Servidor & Modo 3: Thread Pool (3) & 402 & \textbf{852.70} & 1275 \\
+        Peer-to-Peer (P2P) & BitTorrent & 1050 & 1063.60 & 1080 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -89,26 +91,27 @@ A análise cruzada das arquiteturas revela como a gestão de concorrência e a d
 \subsection{Arquitetura Cliente-Servidor: Modo 1 (Sequencial)}
 \begin{itemize}
     \item \textbf{Comportamento:} O servidor bloqueia a conexão e atende exclusivamente um cliente até o fim, formando uma fila de espera para os demais.
-    \item \textbf{Justificativa dos Tempos:} Apresentou invariavelmente o \textbf{menor Tempo Mínimo} (ex: 57 ms nos 50 MB e 272 ms nos 500 MB). Isso ocorre porque o primeiro cliente da fila detém 100\% dos recursos do servidor (I/O, CPU e banda de rede) sem qualquer contenção. No entanto, apresentou o \textbf{maior Tempo Máximo e a pior Média} global, pois o 10º cliente sofreu a penalidade de aguardar ocioso na fila o término das 9 transferências anteriores (alcançando 2478 ms na carga de 500 MB). É uma arquitetura altamente ineficiente para múltiplos nós.
+    \item \textbf{Justificativa dos Tempos:} Apresentou invariavelmente o menor Tempo Mínimo (ex: 57 ms nos 50 MB e 272 ms nos 500 MB). Isso ocorre porque o primeiro cliente da fila detém 100\% dos recursos do servidor (I/O, CPU e banda de rede) sem qualquer contenção. No entanto, apresentou o maior tempo máximo e a pior média global, pois o 10º cliente sofreu a penalidade de aguardar ocioso na fila o término das 9 transferências anteriores (alcançando 2478 ms na carga de 500 MB). É uma arquitetura altamente ineficiente para múltiplos nós.
 \end{itemize}
 
 \subsection{Arquitetura Cliente-Servidor: Modo 2 (Multi-thread Livre)}
 \begin{itemize}
     \item \textbf{Comportamento:} O servidor aceita todas as conexões simultaneamente, instanciando uma nova Thread para cada cliente, dividindo imediatamente os recursos.
-    \item \textbf{Justificativa dos Tempos:} O \textbf{Tempo Mínimo eleva-se} (ex: salta para 832 ms nos 500 MB) porque o primeiro cliente já não tem recursos dedicados; a banda e o processador são fatiados por 10 desde o primeiro milissegundo. Contudo, o \textbf{Tempo Máximo cai drasticamente} em relação ao Modo 1 (de 2478 ms para 1252 ms), pois elimina-se a fila de inatividade. O problema desta abordagem é visível nos 500 MB: a criação descontrolada de threads gera \textit{overhead} de troca de contexto (\textit{Context Switching}) no Sistema Operativo do servidor, penalizando o tempo médio geral.
+    \item \textbf{Justificativa dos Tempos:} O tempo mínimo eleva-se (ex: salta para 832 ms nos 500 MB) porque o primeiro cliente já não tem recursos dedicados; a banda e o processador são fatiados por 10 desde o primeiro milissegundo. Contudo, o tempo máximo cai drasticamente em relação ao Modo 1 (de 2478 ms para 1252 ms), pois elimina-se a fila de inatividade. O problema desta abordagem é visível nos 500 MB: a criação descontrolada de threads gera overhead de troca de contexto no Sistema Operativo do servidor, penalizando o tempo médio geral.
 \end{itemize}
 
 \subsection{Arquitetura Cliente-Servidor: Modo 3 (Thread Pool)}
 \begin{itemize}
     \item \textbf{Comportamento:} O servidor utiliza uma fila controlada e limita a concorrência a um número saudável de threads ativas (neste teste, 3 simultâneas).
-    \item \textbf{Justificativa dos Tempos:} Entregou de forma consistente o \textbf{melhor Tempo Médio} em todas as volumetrias (40.20 ms, 138.30 ms e 852.70 ms). Esta arquitetura combina as vantagens dos modelos anteriores: ao limitar a contenção a 3 transferências simultâneas, evita a saturação de I/O e a sobrecarga de troca de contexto do Modo 2, enquanto acelera dramaticamente o esvaziamento da fila de espera em comparação ao Modo 1. Representa o ponto de equilíbrio de eficiência em arquiteturas centralizadas.
+    \item \textbf{Justificativa dos Tempos:} Entregou de forma consistente o melhor tempo médio em todas as volumetrias na arquitetura centralizada (40.20 ms, 138.30 ms e 852.70 ms). Esta abordagem combina as vantagens dos modelos anteriores: ao limitar a contenção a 3 transferências simultâneas, evita a saturação de I/O e a sobrecarga de troca de contexto do Modo 2, enquanto acelera dramaticamente o esvaziamento da fila de espera em comparação ao Modo 1.
 \end{itemize}
 
 \subsection{Arquitetura Peer-to-Peer (BitTorrent)}
 \begin{itemize}
-    \item \textbf{Comportamento:} A transferência é descentralizada. O nó central (Seeder) envia fragmentos, e os clientes (Leechers) passam a transmitir os fragmentos recebidos uns aos outros.
-    \item \textbf{Justificativa dos Tempos:} Nos testes de 50 MB em ambiente local (onde a rede física é o mesmo host), o P2P apresentou um tempo absoluto superior (Mínimo de 1035 ms). Isso justifica-se pelo \textbf{elevado \textit{overhead} do protocolo}: o BitTorrent necessita realizar consultas ao \textit{tracker}, estabelecer ligações TCP (\textit{Handshakes}) multiplamente entre os nós, trocar \textit{bitmaps} de peças e processar hashes SHA-1 para garantir a integridade de cada fragmento. Para ficheiros pequenos numa rede local ultrarrápida, o custo matemático e de negociação de rede do protocolo demora mais do que a própria transferência \textit{raw} do TCP.
-    \item \textbf{Escalabilidade Comprovada:} O grande destaque do P2P não é a sua velocidade isolada, mas a sua \textbf{curva de tempo plana}. A diferença entre o primeiro cliente a terminar e o último foi de apenas 28 milissegundos (1035 ms vs 1063 ms). Ao contrário do modelo Cliente-Servidor, onde o tempo máximo degrada linearmente com a adição de clientes, o modelo P2P escala perfeitamente. Se o teste envolvesse 1.000 clientes, os servidores centralizados entrariam em colapso, enquanto no P2P, como cada novo cliente atua simultaneamente como servidor (\textit{uploading}), a carga é diluída, mantendo a coesão temporal independentemente da demanda.
+    \item \textbf{O Fenômeno do Overhead de Protocolo:} Ao observar os dados, nota-se que o tempo absoluto do P2P manteve-se estático (entre 1033 ms e 1080 ms), independentemente se o ficheiro tinha 5 MB, 50 MB ou 500 MB. Num ambiente de rede local (onde a latência é sub-milissegundo), a transferência real dos dados ocorre instantaneamente. Os $\sim$1000 ms registados representam quase inteiramente o custo de inicialização do protocolo (consultas ao \textit{tracker}, \textit{handshakes} TCP entre pares, alocação em disco virtual e verificação de \textit{hashes}). 
+    \item \textbf{Ineficiência para Ficheiros Pequenos:} Devido a este \textit{overhead}, o P2P foi superado pelo modelo Cliente-Servidor no ficheiro de 5 MB (1041 ms vs 40 ms). Sockets TCP diretos (Cliente-Servidor) não possuem fase de negociação de vizinhança, sendo ideais para transmissões curtas e rápidas.
+    \item \textbf{Escalabilidade e Vantagem em Alta Carga (500 MB):} É na escala de 500 MB que o P2P demonstra o seu poder. Enquanto o servidor centralizado sobrecarregou e fez o último cliente aguardar até 2478 ms (Modo 1) ou 1275 ms (Modo 3), a rede P2P concluiu todos os downloads num máximo de 1080 ms. Como os \textit{Leechers} transmitem fragmentos entre si simultaneamente, o gargalo central desaparece.
+    \item \textbf{Curva de Tempo Plana:} A prova matemática da eficiência do P2P está na proximidade entre o Tempo Mínimo e o Tempo Máximo. Em todos os testes, a diferença entre o primeiro e o último cliente a concluir foi de 15 a 30 milissegundos. Se o teste escalasse para 1.000 clientes simultâneos, a arquitetura Cliente-Servidor entraria em colapso total, enquanto a rede P2P absorveria a demanda diluindo a carga coletivamente.
 \end{itemize}
 
 \end{document}
